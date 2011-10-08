@@ -1,24 +1,48 @@
 #include <cstring>
+#include "i3d/vector3d.h"
+#include "types.h"
+
 
 #ifndef POINT_H
 #define POINT_H
 
-typedef unsigned int uint8;
-
-class Point {
-    size_t m_x;
-    size_t m_y;
-    uint8 m_value;
+//template <class V, class T> class Point;
+export template <class V, class T> class Point {
+    i3d::Vector3d<V> m_vec;
+    T m_value;
 public:
-    Point(size_t x, size_t y, uint8 value): m_x(x), m_y(y), m_value(value) {}
-    size_t getX();
-    size_t getY();
-    uint8 getValue() const;
-    bool operator< (const Point & p2) const {
-        return getValue() < p2.getValue();
-    }
+    Point(i3d::Vector3d<V> vec, T value): m_vec(vec), m_value(value) {}
+    i3d::Vector3d<V> GetVector() const;
+    T GetValue() const;
+    //bool operator< (const Point <V, T> &p1, const Point<V, T> & p2) const;
+    bool operator<(const Point& p2) const;
+    int GetInt();
 };
 
+template <class V, class T> i3d::Vector3d<V> Point<V, T>::GetVector() const
+{
+    return m_vec;
+}
+
+template <class V, class T> T Point<V, T>::GetValue() const
+{
+    return m_value;
+}
+
+
+//template <class V, class T> bool Point<V,T>::operator< (const Point<V,T> &p1, const Point<V, T> & p2) const {
+//    return p1.GetValue() < p2.GetValue();
+//}
+
+
+// lowest intensity is 255 - white
+template <class V, class T> bool Point<V, T>::operator<(const Point<V, T> &p2) const {
+    return this->GetValue() > p2.GetValue();
+}
+
+template <class V, class T> int Point<V, T>::GetInt() {
+    return 1;
+}
+
+
 #endif // POINT_H
-
-

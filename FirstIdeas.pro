@@ -1,12 +1,17 @@
 SOURCES += \
-    main.cc \
-    i3dcore.cc \
-    point.cc
+    main.cc
 
 HEADERS += \
-    i3dcore.h \
     point.h
 
+
+
+unix|win32: LIBS += -L/usr/local/lib/ -li3dcore -li3dalgo
+
+INCLUDEPATH += /usr/local/include
+//DEPENDPATH += /usr/local/include
+
+CFLAGS += -Wall
 
 
 
