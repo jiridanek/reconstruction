@@ -14,9 +14,10 @@
 #include <iostream>
 #include <cstdio>
 #include <cassert>
+/// to time the algorithms
+#include <ctime>
 
-#include "i3dcore.h"
-#include "i3d/image3d.h"
+#include <i3d/image3d.h>
 #include "point.h"
 
 using namespace std;
@@ -119,8 +120,8 @@ void Reconstruction_by_dilatation_downhill(i3d::Image3d<i3d::GRAY8> & MARKER, i3
                     }
                 }
 
-                i3d::Vector3d<size_t> *ns = new i3d::Vector3d<size_t>(p.GetVector().x+a, p.GetVector().y+b, 0);
-                vec.push_back(*ns);
+                i3d::Vector3d<size_t> ns = i3d::Vector3d<size_t>(p.GetVector().x+a, p.GetVector().y+b, 0);
+                vec.push_back(ns);
             }
         }
 
@@ -137,37 +138,20 @@ void Reconstruction_by_dilatation_downhill(i3d::Image3d<i3d::GRAY8> & MARKER, i3
 
 }
 
-#include <i3d/image3d.h>
+timespec diff(timespec start, timespec end)
+{
+        timespec temp;
+        if ((end.tv_nsec-start.tv_nsec)<0) {
+                temp.tv_sec = end.tv_sec-start.tv_sec-1;
+                temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+        } else {
+                temp.tv_sec = end.tv_sec-start.tv_sec;
+                temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+        }
+        return temp;
+}
 
 int main() {
-//    uint8 ctverec[5][5] = {{1,1,1,1,1},
-//                             {2,1,0,1,0},
-//                             {3,0,0,0,1},
-//                             {4,0,0,0,1},
-//                             {5,1,1,1,1}};
-//    uint8 stred[5][5] = {{1,0,0,0,0},
-//                         {0,0,0,0,0},
-//                         {0,0,0,0,0},
-//                         {0,0,0,0,0},
-//                         {0,0,0,0,0}};
-
-//    uint8 empty[5][5] = {{0,0,0,0,0},
-//                         {0,0,0,0,0},
-//                         {0,0,0,0,0},
-//                         {0,0,0,0,0},
-//                         {0,0,0,0,0}};
-
-    //xi3d mask(5,5,ctverec);
-    //xi3d marker(5,5,stred);
-    //xi3d out(5,5,empty);
-
-   //Reconstruction_by_dilatation_downhill(marker, mask, &out);
-
-   //out.print();
-   //std::cout << std::endl;
-//   mask.print();
-//   std::cout << std::endl;
-//   marker.print();
 
    i3d::Image3d<i3d::GRAY8> a("marker.jpg", 0, false, -1, 0, 0);
    i3d::Image3d<i3d::GRAY8> b("mask.jpg", 0, false, -1, 0, 0);
@@ -179,7 +163,33 @@ int main() {
    //v1.GetInt();
    //cout << (v1 < v2) << endl;
 
+    //! Testrun, trying not to measture startup time
     Reconstruction_by_dilatation_downhill(a, b, c);
+    c.SetAllVoxels(i3d::GRAY8(WHITE));
 
+    const int BASE = 10;
+    const int STEP = 10;
+    const int UPTO = 1000;
+
+
+
+    for (int stepper = BASE; stepper <= UPTO; stepper = stepper*STEP) {
+        timespec stopwatch_start;
+        timespec stopwatch_stop;
+        timespec stopwatch_elapsed;
+        int err;
+        err = clock_gettime(CLOCK_REALTIME, &stopwatch_start);
+        for (int count = 0; count < stepper; count++) {
+            Reconstruction_by_dilatation_downhill(a, b, c);
+            //! Cleanup of the output image
+            c.SetAllVoxels(i3d::GRAY8(WHITE));
+        }
+        err = clock_gettime(CLOCK_REALTIME, &stopwatch_stop);
+        stopwatch_elapsed = diff(stopwatch_start, stopwatch_stop);
+        std::cout << stepper << ": " << stopwatch_elapsed.tv_sec << "." << stopwatch_elapsed.tv_nsec << endl;
+     }
+
+    /// now we won't erase this so we can check it was still doing what it should
+    Reconstruction_by_dilatation_downhill(a, b, c);
     c.SaveImage("reconstructed.tga", i3d::IMG_TARGA, false);
 }

@@ -1,7 +1,5 @@
 #include <cstring>
 #include "i3d/vector3d.h"
-#include "types.h"
-
 
 #ifndef POINT_H
 #define POINT_H
