@@ -5,7 +5,7 @@
 #define POINT_H
 
 //template <class V, class T> class Point;
-export template <class V, class T> class Point {
+template <class V, class T> class Point {
     i3d::Vector3d<V> m_vec;
     T m_value;
 public:
