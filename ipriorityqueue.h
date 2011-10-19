@@ -15,6 +15,7 @@ public:
     virtual struct data_priority_t top() const = 0;
     virtual bool empty() const = 0;
     virtual bool everEnqueued(DATA_T value) const = 0;
+    virtual ~IPriorityQueue() {}
 };
 
 #endif // IPRIORITYQUEUE_H
