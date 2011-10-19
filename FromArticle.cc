@@ -168,7 +168,7 @@ void timeAlg2() {
 
      const int BASE = 10;
      const int STEP = 10;
-     const int UPTO = 0;
+     const int UPTO = 10000;
 
 
 

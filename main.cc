@@ -24,6 +24,6 @@ int main() {
 #ifdef DEBUG
     std::count << "DEBUG" << endl;
 #endif
-    timeAlg1();
-    //timeAlg2();
+    //timeAlg1();
+    timeAlg2();
 }
