@@ -5,12 +5,12 @@
 #ifndef BUCKETQUEUE_H
 #define BUCKETQUEUE_H
 
-class QueueEmpty {
+struct QueueEmpty : public std::exception {
     virtual const char* what() const throw()
       {
         return "The BucketQueue is empty";
       }
-} QueueEmpty;
+};
 
 
 /*!
@@ -19,6 +19,8 @@ class QueueEmpty {
   Queue can be operated only ether by using just functions pop and top with one parameter, or
   their versions without parameters and all other functions, because the versions with parameter can put the object
   into inconsistent state;
+
+  If the same value is added to the queue several times, it will break the queue.
   */
 class BucketQueue {
 public:
@@ -72,7 +74,7 @@ bool BucketQueue::empty() {
 
 int BucketQueue::Top(int priority) {
     if (empty()) {
-        throw QueueEmpty;
+        throw QueueEmpty();
     }
     int index = heads[priority];
     return index;
@@ -110,7 +112,8 @@ void BucketQueue::Pop() {
   will be forever kept at tails[value]. So we can do simple compare
   */
 bool BucketQueue::EverEnqueued(int index){
-    return tails[index] != (int)0xffffffff;
+    return (tails[index] != (int)0xffffffff );
+
 }
 
 #endif // BUCKETQUEUE_H

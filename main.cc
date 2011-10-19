@@ -21,6 +21,9 @@
 using namespace std;
 
 int main() {
-    //timeAlg1();
-    timeAlg2();
+#ifdef DEBUG
+    std::count << "DEBUG" << endl;
+#endif
+    timeAlg1();
+    //timeAlg2();
 }

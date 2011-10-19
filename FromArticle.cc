@@ -1,3 +1,11 @@
+/** This is version that cannot deal with values in marker that are higher than zero, but
+ lower than the maximal values allowed in that place by mask. It will copy
+ these pixels from marker to the output image and wont do reconstruction there.
+
+ So pixels in the marker have to be either zero or values in mask
+ that is what in the article is called strengthened precondition
+ */
+
 #include <i3d/image3d.h>
 #include <i3d/vector3d.h>
 #include "FromArticle.h"
@@ -8,8 +16,11 @@
 #include <iostream>
 #include <vector>
 
+#include <queue>
+
 #include "Timing.h"
 #include "ReservablePriorityQueue.h"
+#include "intervalqueue.h"
 
 class indexvalue {
     int m_index;
@@ -28,6 +39,7 @@ public:
 };
 
 template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & MARKER, i3d::Image3d<T> & MASK, i3d::Image3d<T> & reconstructed) {
+
     T *marker_data = MARKER.begin();
     T *mask_data = MASK.begin();
     T *reconstructed_data = reconstructed.begin();
@@ -38,15 +50,19 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
 #ifndef RESERVABLE_PRIORITY_QUEUE
     BucketQueue q((int)MARKER.GetImageSize(), max_value);
 #else
-    reservable_priority_queue<indexvalue> q((int)MARKER.GetImageSize());
+    //reservable_priority_queue<indexvalue> q((int)MARKER.GetImageSize());
+    //std::priority_queue<indexvalue_t<size_t, T> > q;
+    IntervalQueue<indexvalue_t<size_t, T>, T> q (MARKER.GetImageSize(), 20);
+    //std::priority_queue<indexvalue, std::deque<indexvalue> > q;
     std::vector<bool> visited(MARKER.GetImageSize()+1, false);
 #endif
     for (int i = 0; i != (int)MARKER.GetImageSize(); ++i) {
         if ( marker_data[i] != WHITE) {
 #ifndef RESERVABLE_PRIORITY_QUEUE
             q.Enqueue(i, marker_data[i]);
+            //cout << "pepa" << qfallowdouble[i];
 #else
-            q.push(indexvalue(i, marker_data[i]));
+            q.push(indexvalue_t<size_t, T>(i, marker_data[i]));
             visited[i] = true;
 #endif
         }
@@ -59,24 +75,29 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
     while(! q.empty()) {
         int intensity;
         int index;
+
+
 #ifndef RESERVABLE_PRIORITY_QUEUE
         try {
-            intensity = q.TopPriority();
             index = q.Top();
+            intensity = q.TopPriority();
+
 //            std::cout << intensity << " " << index << std::endl;
             q.Pop();
         } catch (...) {
             break;
         }
 #else
-        indexvalue iv = q.top();
+        indexvalue_t<size_t, T> iv = q.top();
         q.pop();
-        intensity = iv.GetValue();
-        index = iv.GetIndex();
+        intensity = iv.value;
+        index = iv.index;
 #endif
         //if (intensity > 200 ) {continue;}
 
        //reconstructed.SetVoxel(5,0,0,5);
+
+
         intensity = std::max((T)intensity, mask_data[index]);
         reconstructed.SetVoxel((size_t)index, (T)intensity);
        //std::cout << reconstructed_data[reconstructed.GetIndex(5, 0, 0)] << std::endl;
@@ -100,7 +121,7 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
                         continue;
                     }
 
-                    if (y + b > (int)reconstructed.GetHeight() - 1) {
+                    if (y + b >= (int)reconstructed.GetHeight() ) {
                         continue;
                     }
 
@@ -111,7 +132,7 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
                         continue;
                     }
 
-                    if (x + a > (int)reconstructed.GetWidth() - 1 ) {
+                    if (x + a >= (int)reconstructed.GetWidth()  ) {
                         continue;
                     }
                 }
@@ -119,12 +140,14 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
                 size_t ny = y + b;
                 int nindex = reconstructed.GetIndex(nx, ny, 0);
 #ifndef RESERVABLE_PRIORITY_QUEUE
-                if ( ! q.EverEnqueued(nindex)) {
+                if ( ! (q.EverEnqueued(nindex))) {
+
                     q.Enqueue(nindex, intensity);
+
                 }
 #else
                 if(visited[nindex] != true) {
-                    q.push(indexvalue(nindex, intensity));
+                    q.push(indexvalue_t<size_t, T> (nindex, intensity));
                     visited[index] = true;
                 }
 #endif
@@ -134,9 +157,9 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
 }
 
 void timeAlg2() {
-    i3d::Image3d<i3d::GRAY8> a("marker.jpg", 0, false, -1, 0, 0);
-    i3d::Image3d<i3d::GRAY8> b("mask.jpg", 0, false, -1, 0, 0);
-    i3d::Image3d<i3d::GRAY8> c("marker.jpg", 0, false, -1, 0, 0);
+    i3d::Image3d<i3d::GRAY8> a("marker.tga", 0, false, -1, 0, 0);
+    i3d::Image3d<i3d::GRAY8> b("mask.tga", 0, false, -1, 0, 0);
+    i3d::Image3d<i3d::GRAY8> c("marker.tga", 0, false, -1, 0, 0);
     c.SetAllVoxels(i3d::GRAY8(WHITE));
 
      //! Testrun, trying not to measture startup time
@@ -145,7 +168,7 @@ void timeAlg2() {
 
      const int BASE = 10;
      const int STEP = 10;
-     const int UPTO = 100;
+     const int UPTO = 0;
 
 
 

@@ -14,6 +14,7 @@
 //! Implements morphological reconstruction by dilatation using unoptimized Downhill algorithm
 /*!
   This function requires the output image to be completely white in the beginning
+
   1) Goes through all voxels in marker and enqueues all pixels with intensity != 0
   2) While queue is not empty
     1) values in reconstruction are set and the neighbouring pixels are enqueued
@@ -251,7 +252,7 @@ void Reconstruction_by_dilatation_downhill(i3d::Image3d<i3d::GRAY8> & MARKER, i3
             }
         }
 #elif defined(OPTIMIZE_NEIGHBOURS_NODYNBOUNDS)
-        //! also slow, and with ins it is even slower
+        //! also slow, and with ints it is still so slow
         i3d::Vector3d<size_t> vec = p.GetVector(); // no point in changing this to direct access
 
         long long x = vec.x;
@@ -398,7 +399,7 @@ void timeAlg1() {
 
      const int BASE = 10;
      const int STEP = 10;
-     const int UPTO = 100;
+     const int UPTO = 1000;
 
 
 
