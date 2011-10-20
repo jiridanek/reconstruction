@@ -21,6 +21,8 @@
 #include "Timing.h"
 #include "ReservablePriorityQueue.h"
 #include "intervalqueue.h"
+#include "ipriorityqueue.h"
+#include "hierarchicalqueue.h"
 
 class indexvalue {
     int m_index;
@@ -42,28 +44,35 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
 
     T *marker_data = MARKER.begin();
     T *mask_data = MASK.begin();
-    T *reconstructed_data = reconstructed.begin();
 
     T max_value = MARKER.GetVoxelData().max();
 
     /** ints vs size_t */
-#ifndef RESERVABLE_PRIORITY_QUEUE
+#ifdef BUCKET_QUEUE
     BucketQueue q((int)MARKER.GetImageSize(), max_value);
-#else
+#endif
+#ifdef RESERVABLE_PRIORITY_QUEUE
     //reservable_priority_queue<indexvalue> q((int)MARKER.GetImageSize());
     //std::priority_queue<indexvalue_t<size_t, T> > q;
     IntervalQueue<indexvalue_t<size_t, T>, T> q (MARKER.GetImageSize(), 20);
     //std::priority_queue<indexvalue, std::deque<indexvalue> > q;
     std::vector<bool> visited(MARKER.GetImageSize()+1, false);
 #endif
+#ifdef HIERARCHICAL_PRIORITY_QUEUE
+    CHierarchicalQueue<int, int> q (MARKER.GetImageSize(), max_value);
+#endif
     for (int i = 0; i != (int)MARKER.GetImageSize(); ++i) {
         if ( marker_data[i] != WHITE) {
-#ifndef RESERVABLE_PRIORITY_QUEUE
+#ifdef BUCKET_QUEUE
             q.Enqueue(i, marker_data[i]);
             //cout << "pepa" << qfallowdouble[i];
-#else
+#endif
+#ifdef RESERVABLE_PRIORITY_QUEUE
             q.push(indexvalue_t<size_t, T>(i, marker_data[i]));
             visited[i] = true;
+#endif
+#ifdef HIERARCHICAL_PRIORITY_QUEUE
+            q.push(i, marker_data[i]);
 #endif
         }
     }
@@ -77,7 +86,7 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
         int index;
 
 
-#ifndef RESERVABLE_PRIORITY_QUEUE
+#ifdef BUCKET_QUEUE
         try {
             index = q.Top();
             intensity = q.TopPriority();
@@ -87,11 +96,17 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
         } catch (...) {
             break;
         }
-#else
+#endif
+#ifdef RESERVABLE_PRIORITY_QUEUE
         indexvalue_t<size_t, T> iv = q.top();
         q.pop();
         intensity = iv.value;
         index = iv.index;
+#endif
+#ifdef HIERARCHICAL_PRIORITY_QUEUE
+        intensity = q.top().priority;
+        index = q.top().value;
+        q.pop();
 #endif
         //if (intensity > 200 ) {continue;}
 
@@ -139,16 +154,22 @@ template <class T> void Reconstruction_by_dillatation_bucket(i3d::Image3d<T> & M
                 size_t nx = x + a;
                 size_t ny = y + b;
                 int nindex = reconstructed.GetIndex(nx, ny, 0);
-#ifndef RESERVABLE_PRIORITY_QUEUE
+#ifdef BUCKET_QUEUE
                 if ( ! (q.EverEnqueued(nindex))) {
 
                     q.Enqueue(nindex, intensity);
 
                 }
-#else
+#endif
+#ifdef RESERVABLE_PRIORITY_QUEUE
                 if(visited[nindex] != true) {
                     q.push(indexvalue_t<size_t, T> (nindex, intensity));
                     visited[index] = true;
+                }
+#endif
+#ifdef HIERARCHICAL_PRIORITY_QUEUE
+                if ( ! (q.hasBeenDequeued(nindex))) {
+                    q.push(nindex, intensity);
                 }
 #endif
             }
