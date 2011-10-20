@@ -18,8 +18,15 @@ template <class DATA_T, class PRIORITY_T>
 class CHierarchicalQueue : public IPriorityQueue<DATA_T, PRIORITY_T> {
 
     struct item_t {
-        DATA_T value;
+        DATA_T value;               //! can be computed from indices, does not have to be stored
         bool ever_enqueued;         //! used only in m_tails, always false in m_head
+        /** items not in queue can sometimes have a priority set
+          as a leftover. That doesn't break anything
+         */
+        PRIORITY_T priority;        //! cannot be computed, would require traversing the linked list
+        /** these pointers should always be kept in consistent state
+          like setting them to NULL and so on
+         */
         struct item_t *previous;
         struct item_t *next;
     };
@@ -81,6 +88,7 @@ public:
     virtual bool everEnqueued(DATA_T value) const;
     bool hasBeenDequeued(DATA_T value) const;
     bool isInQueue(DATA_T value) const;
+    PRIORITY_T getPriority(DATA_T value) const;
 };
 
 template <class DATA_T, class PRIORITY_T>
@@ -124,8 +132,8 @@ void CHierarchicalQueue<DATA_T, PRIORITY_T>::push(DATA_T value, PRIORITY_T prior
     // if this item is part of some other linked list for different priority,
     // we need to move it into the new priority and relink the list for the old priority
 
-    // if we are inserting the item to the same priority as it were, we relink it anyway and
-    // put it to the beginning of the list
+    // if we are inserting the item to the same priority as it is already in,
+    // the function just returns, leaving queue unmodified
 
     /*!
       beginning                end
@@ -133,8 +141,13 @@ void CHierarchicalQueue<DATA_T, PRIORITY_T>::push(DATA_T value, PRIORITY_T prior
       previous <>     tail    <> next
                 (take this out)
     */
-    // if enqueued, it has ALWAYS a previous item (could be in m_heads)
-    if (tail.previous != NULL) {
+
+    if (tail.previous != NULL) { // could call isInQueue(...) instead
+        /// this check saves more time here, than in code that calls q.push
+        if (m_tails[value].priority == priority) { // could call getPriority(...)
+            // this value,priority pair is already in queue, nothing to do
+            return;
+        }
         //this removes the item from the linked list it is in
         struct item_t & previous = *(tail.previous);
         //relink from beginning -> end
@@ -164,6 +177,7 @@ void CHierarchicalQueue<DATA_T, PRIORITY_T>::push(DATA_T value, PRIORITY_T prior
 
     m_is_empty = false;
     tail.ever_enqueued = true;
+    tail.priority = priority;
 }
 
 template <class DATA_T, class PRIORITY_T>
@@ -215,9 +229,17 @@ bool CHierarchicalQueue<DATA_T, PRIORITY_T>::hasBeenDequeued(DATA_T value) const
     return this->everEnqueued(value) && m_tails[value].previous == NULL;
 }
 
+/*!
+ if enqueued, it has ALWAYS a previous item (could be in m_heads)
+ */
 template <class DATA_T, class PRIORITY_T>
 bool CHierarchicalQueue<DATA_T, PRIORITY_T>::isInQueue(DATA_T value) const {
     return m_tails[value].previous != NULL;
+}
+
+template <class DATA_T, class PRIORITY_T>
+PRIORITY_T CHierarchicalQueue<DATA_T, PRIORITY_T>::getPriority(DATA_T value) const {
+    return m_tails[value].priority;
 }
 
 template <class DATA_T, class PRIORITY_T>

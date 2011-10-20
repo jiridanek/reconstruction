@@ -14,7 +14,7 @@
     #define OPTIMIZE_NEIGHBOURS_IFTREE
 
 /**
-  vybáral jsem typické výsledky na mém počítači:
+  vybral jsem typické výsledky na mém počítači:
 
   parametry gcc: -O3 -fomit-frame-pointer
   při použití kompilátoru od Intelu byly časy srovnatelné, občas dokonce trochu horší, možná
