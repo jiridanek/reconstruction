@@ -17,6 +17,7 @@
 #include "Point.h"
 #include "ReconstructionAlgorithms.h"
 #include "FromArticle.h"
+#include "DownhillReconstruction.h"
 
 using namespace std;
 
@@ -25,5 +26,6 @@ int main() {
     std::count << "DEBUG" << endl;
 #endif
     //timeAlg1();
-    timeAlg2();
+    //timeAlg2();
+    timeAlg3();
 }

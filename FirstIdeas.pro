@@ -4,9 +4,6 @@ SOURCES += \
     FromArticle.cc \
     Timing.cc \
     intervalqueue.cc \
-    ipriorityqueue.cc \
-    hierarchicalqueue.cc \
-    chierarchicalheapqueue.cc \
     DownhillReconstruction.cc
 
 HEADERS += \
@@ -19,7 +16,8 @@ HEADERS += \
     intervalqueue.h \
     ipriorityqueue.h \
     hierarchicalqueue.h \
-    chierarchicalheapqueue.h
+    chierarchicalheapqueue.h \
+    DownhillReconstruction.h
 
 DCMAKE_VERBOSE_MAKEFILE=ON
 
@@ -45,6 +43,10 @@ QMAKE_CXXFLAGS_RELEASE = -O3 -fomit-frame-pointer
 #QMAKE_CFLAGS_DEBUG = -funroll-loops
 #QMAKE_CXXFLAGS_DEBUG = -funroll-loops
 #QMAKE_LFLAGS_DEBUG =
+
+
+
+
 
 
 
