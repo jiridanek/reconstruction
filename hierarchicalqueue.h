@@ -1,7 +1,7 @@
 /*!
   hierarchical queue (sometimes called Bucket queue) it can do all operations (with the exceptiono of constructor) in O(1) time
 
-  it only works for integral priority values. Also,
+  it only works for integral values as both DATA_T and PRIORITY_T. Also,
  */
 #include <cstddef>
 #include <cstdlib> //malloc
@@ -19,7 +19,7 @@ class CHierarchicalQueue : public IPriorityQueue<DATA_T, PRIORITY_T> {
 
     struct item_t {
         DATA_T value;
-        bool ever_enqueued;
+        bool ever_enqueued;         //! used only in m_tails, always false in m_head
         struct item_t *previous;
         struct item_t *next;
     };
@@ -79,6 +79,8 @@ public:
     virtual struct IPriorityQueue<DATA_T, PRIORITY_T>::data_priority_t top() const;
     virtual bool empty() const;
     virtual bool everEnqueued(DATA_T value) const;
+    bool hasBeenDequeued(DATA_T value) const;
+    bool isInQueue(DATA_T value) const;
 };
 
 template <class DATA_T, class PRIORITY_T>
@@ -94,6 +96,7 @@ CHierarchicalQueue<DATA_T, PRIORITY_T>::CHierarchicalQueue(
     m_tails = (struct item_t *) malloc((m_highest_value+1) * sizeof(struct CHierarchicalQueue::item_t));
 
     // initialize item_t structures to zeros/NULLs
+    // we can do that as long as the structure contains only primitive types
     memset(m_heads,0,(m_highest_priority+1)*sizeof(struct CHierarchicalQueue::item_t));
     memset(m_tails,0,(m_highest_value+1)*sizeof(struct CHierarchicalQueue::item_t));
 }
@@ -118,8 +121,11 @@ void CHierarchicalQueue<DATA_T, PRIORITY_T>::push(DATA_T value, PRIORITY_T prior
     //
     struct item_t & tail = m_tails[value];
 
-    // if this item is part of some other linked list (for different / the same priority),
-    // we have to / can relink it
+    // if this item is part of some other linked list for different priority,
+    // we need to move it into the new priority and relink the list for the old priority
+
+    // if we are inserting the item to the same priority as it were, we relink it anyway and
+    // put it to the beginning of the list
 
     /*!
       beginning                end
@@ -164,8 +170,17 @@ template <class DATA_T, class PRIORITY_T>
 void CHierarchicalQueue<DATA_T, PRIORITY_T>::pop() {
 
     DATA_T index = m_heads[m_current_priority].value;
+    /// don't forget to set both pointers in tail to NULL,
+    /// so hasBeenDequeued(...) will work
+    /// also set the previous pointer to NULL in head
+    m_tails[index].previous = NULL;
     m_heads[m_current_priority] = m_tails[index];
-    m_heads[m_current_priority].previous = NULL;
+    m_tails[index].next = NULL;
+
+    /// keep it linked, see TEST(BreakingPop)
+    if(m_heads[m_current_priority].next != NULL) {
+        m_heads[m_current_priority].next->previous = & m_heads[m_current_priority];
+    }
 
     // try to move to next nonempty bucket
     while(m_heads[m_current_priority].next == NULL && m_current_priority != m_highest_priority) {
@@ -193,6 +208,16 @@ bool CHierarchicalQueue<DATA_T, PRIORITY_T>::empty() const {
 template <class DATA_T, class PRIORITY_T>
 bool CHierarchicalQueue<DATA_T, PRIORITY_T>::everEnqueued(DATA_T value) const {
     return m_tails[value].ever_enqueued;
+}
+
+template <class DATA_T, class PRIORITY_T>
+bool CHierarchicalQueue<DATA_T, PRIORITY_T>::hasBeenDequeued(DATA_T value) const {
+    return this->everEnqueued(value) && m_tails[value].previous == NULL;
+}
+
+template <class DATA_T, class PRIORITY_T>
+bool CHierarchicalQueue<DATA_T, PRIORITY_T>::isInQueue(DATA_T value) const {
+    return m_tails[value].previous != NULL;
 }
 
 template <class DATA_T, class PRIORITY_T>
