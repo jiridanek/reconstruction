@@ -1,5 +1,21 @@
-/*!
-
+/*
+ * i3dlib - image manipulation library
+ *
+ * Copyright (C) 2000-2006   Centre for Biomedical Image Analysis (CBIA)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License along with this library; if not, write to the Free
+ * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <i3d/image3d.h>
@@ -15,19 +31,25 @@
 #include "ipriorityqueue.h"
 #include "hierarchicalqueue.h"
 
+using std::size_t;
 using std::vector;
+using i3d::Image3d;
+using i3d::Neighbourhood;
+
 using std::max;
 using std::abs;
 using i3d::GetWindow;
-using std::size_t;
 
-template <class T> void Reconstruction_by_dillatation(i3d::Image3d<T> & MARKER, i3d::Image3d<T> & MASK, i3d::Image3d<T> & reconstructed, const i3d::Neighbourhood & NEIGHBOURHOOD) {
+template <class T> void Reconstruction_by_dillatation(
+        Image3d<T> & MARKER
+      , Image3d<T> & MASK
+      , Image3d<T> & reconstructed
+      , const Neighbourhood & NEIGHBOURHOOD) {
 
     T *marker_data = MARKER.begin();
     T *mask_data = MASK.begin();
 
     T max_value = MARKER.GetVoxelData().max();
-
 
     CHierarchicalQueue<size_t, T> q(MARKER.GetImageSize(), max_value);
 
@@ -128,7 +150,7 @@ template <class T> void Reconstruction_by_dillatation(i3d::Image3d<T> & MARKER, 
 #ifdef NEIGHBOURHOOD_4IFTREE
         for (int a = -1; a <= 1; a++) {
             for (int b = -1; b <= 1; b++) {
-                if (std::abs(a) == std::abs(b)) {
+                if (abs(a) == abs(b)) {
                     continue;
                 }
 
@@ -164,11 +186,13 @@ template <class T> void Reconstruction_by_dillatation(i3d::Image3d<T> & MARKER, 
     }
 }
 
+using i3d::GRAY8;
+
 void timeAlg3() {
-    i3d::Image3d<i3d::GRAY8> a("marker.tga", 0, false, -1, 0, 0);
-    i3d::Image3d<i3d::GRAY8> b("mask.tga", 0, false, -1, 0, 0);
-    i3d::Image3d<i3d::GRAY8> c("marker.tga", 0, false, -1, 0, 0);
-    c.SetAllVoxels(i3d::GRAY8(WHITE));
+    Image3d<GRAY8> a("marker.tga", 0, false, -1, 0, 0);
+    Image3d<GRAY8> b("mask.tga", 0, false, -1, 0, 0);
+    Image3d<GRAY8> c("marker.tga", 0, false, -1, 0, 0);
+    c.SetAllVoxels(GRAY8(WHITE));
 
      //! Testrun, trying not to measture startup time
      Reconstruction_by_dillatation(a, b, c);
