@@ -29,9 +29,10 @@
 
 */
 
-#include <cstddef>
+#include <cstddef> //size_t
 #include <cstdlib> //malloc
 #include <cstring> //memset
+#include <cassert> //assert
 
 #include "ipriorityqueue.h"
 
@@ -115,6 +116,7 @@ public:
     bool hasBeenDequeued(DATA_T value) const;
     bool isInQueue(DATA_T value) const;
     PRIORITY_T getPriority(DATA_T value) const;
+    bool getPrioritySlice(DATA_T **prioritySlice, size_t *, PRIORITY_T *priority);
 };
 
 template <class DATA_T, class PRIORITY_T>
@@ -266,6 +268,64 @@ bool CHierarchicalQueue<DATA_T, PRIORITY_T>::isInQueue(DATA_T value) const {
 template <class DATA_T, class PRIORITY_T>
 PRIORITY_T CHierarchicalQueue<DATA_T, PRIORITY_T>::getPriority(DATA_T value) const {
     return m_tails[value].priority;
+}
+
+/*!
+ Returns an C static array of items with the highest priority and
+ a) dequeues those items
+ b) leaves them in the queue, only zeroes the m_heads[priority]
+      so it only looks (most of the time) like they are not in
+      which leaves the queue in inconsistent state, but that does
+      not matter for downhill reconstruction
+  prioritySlice is a malloc allocated array and needs to be freed
+  by the user when it is no longer required
+  \param
+  \param
+  \param
+ */
+template <class DATA_T, class PRIORITY_T>
+bool CHierarchicalQueue<DATA_T, PRIORITY_T>::getPrioritySlice(
+        DATA_T **prioritySlice
+      , size_t *element_count
+      , PRIORITY_T *priority) {
+
+    if (prioritySlice == NULL) {
+        return false;
+    }
+
+    if (element_count == NULL) {
+        return false;
+    }
+
+    if (priority == NULL) {
+        return false;
+    }
+
+    //version a)
+
+    typename IPriorityQueue<DATA_T, PRIORITY_T>::data_priority_t item;
+    item = this->top();
+
+    *element_count = 0;
+    // traverse linked list and stop at the last element
+    for (struct item_t *p = &m_heads[item.priority]; p->next != NULL; p = p->next) {
+        (*element_count)++;
+    }
+
+    //allocate space
+    *prioritySlice = (DATA_T *) malloc((*element_count) * sizeof(DATA_T));
+
+    *priority = item.priority;
+
+    // tested wrong loop condition in while loop, see
+    // TEST(PrioritySliceWouldTryToPopEmptyQueue)
+    for (size_t i=0; i < *element_count; i++) {
+        (*prioritySlice)[i] = item.value;
+        this->pop();
+        item = this->top();
+    }
+
+    return true;
 }
 
 template <class DATA_T, class PRIORITY_T>
