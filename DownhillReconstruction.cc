@@ -187,20 +187,27 @@ template <class T> void Reconstruction_by_dillatation(
         }
 #endif
 #endif /* SEQUENTIAL */
-
+#ifdef OMP
         size_t *currPrioritySlice;
         size_t noValues;
         T currPriority;
         q.getPrioritySlice(&currPrioritySlice, &noValues, &currPriority);
 
-        vector<typename IPriorityQueue<size_t, T>::data_priority_t> neighboursToVisit;
+        /// there should be one vector per thread
+        //vector<typename IPriorityQueue<size_t, T>::data_priority_t> neighboursToVisit;
+        vector<size_t> neighboursToVisit;
         // lets take all the memory we could possibly need right now
         neighboursToVisit.reserve(noValues*NEIGHBOURHOOD.offset.size());
 
         //copied the schedule clause from http://software.intel.com/en-us/articles/optimization-of-image-processing-algorithms-a-case-study/
-        //no idea what does it do
+        //no idea how does it do it, but happens to make it ~2 times faster
         //private (colin,colout)
-#pragma omp parallel for schedule(dynamic,3*MASK.GetWidth())
+#pragma omp parallel
+        {
+            //vector<size_t> neighboursToVisit;
+            //neighboursToVisit.reserve(noValues*NEIGHBOURHOOD.offset.size()/4);
+#pragma omp for schedule(dynamic, 3*MASK.GetWidth())
+
         for(size_t i=0; i < noValues; i++) {
             const size_t index = currPrioritySlice[i];
             // hopefully this won't cause problems, because no to threads
@@ -260,24 +267,40 @@ template <class T> void Reconstruction_by_dillatation(
                     }
                 }
 
-                size_t position = index+neig.x + neig.y*MASK.GetWidth() + neig.z*MASK.GetHeight()*MASK.GetWidth();
-                //size_t position = MASK.GetIndex(newx, newy, newz);
+                //size_t position = index+neig.x + neig.y*MASK.GetWidth() + neig.z*MASK.GetHeight()*MASK.GetWidth();
+                size_t position = MASK.GetIndex(newx, newy, newz);
                 /// checking q.getPriority(position) != neigh_intensity here only slows it down
                 // const method, no race conditions on q
                 if(!q.hasBeenDequeued(position)) {
+// now this is no longer critical, one vector per thread
     #pragma omp critical
                     {
-                        neighboursToVisit.push_back((typename IPriorityQueue<size_t, T>::data_priority_t) {position, max(currPriority, mask_data[position])});
+                        //neighboursToVisit.push_back((typename IPriorityQueue<size_t, T>::data_priority_t) {position, max(currPriority, mask_data[position])});
+                        //q.push(position, max(currPriority, mask_data[position]));
+                        neighboursToVisit.push_back(position);
+
                     }
                 }
             }
 #endif /* NEIGHBOURHOOD_DOITYOURSELF */
 
         }
-        for(typename vector< typename IPriorityQueue<size_t, T>::data_priority_t >::const_iterator it = neighboursToVisit.begin(); it != neighboursToVisit.end(); ++it) {
-            q.push((*it).value, (*it).priority);
+        //for(typename vector< typename IPriorityQueue<size_t, T>::data_priority_t >::const_iterator it = neighboursToVisit.begin(); it != neighboursToVisit.end(); ++it) {
+#pragma omp single
+        {
+        for(vector<size_t>::const_iterator it = neighboursToVisit.begin(); it != neighboursToVisit.end(); ++it) {
+            //q.push((*it).value, (*it).priority);
+            // but this is
+            const T inte = max(currPriority, mask_data[(*it)]);
+           // #pragma omp critical
+            {
+            q.push((*it),inte);
+            }
+        }
+        }
         }
         free(currPrioritySlice);
+#endif
     }
 }
 
