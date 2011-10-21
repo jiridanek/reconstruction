@@ -20,7 +20,7 @@ HEADERS += \
 
 DCMAKE_VERBOSE_MAKEFILE=ON
 
-unix|win32: LIBS += -L/usr/local/lib/ -li3dcore -li3dalgo -lrt
+unix|win32: LIBS += -L/usr/local/lib/ -li3dcore -li3dalgo -lrt -fopenmp
 INCLUDEPATH += /usr/local/include
 DEPENDPATH += /usr/local/include
 
@@ -33,8 +33,8 @@ DEPENDPATH += /usr/local/include
 #DEPENDPATH += /home/jirka/usr/intel/include
 
 
-QMAKE_CFLAGS_RELEASE = -O3 -fomit-frame-pointer
-QMAKE_CXXFLAGS_RELEASE = -O3 -fomit-frame-pointer
+#QMAKE_CFLAGS_RELEASE = -O3 -fomit-frame-pointer
+QMAKE_CXXFLAGS_RELEASE += -O3 -fomit-frame-pointer -fopenmp
 #QMAKE_LFLAGS_RELEASE =
 
 

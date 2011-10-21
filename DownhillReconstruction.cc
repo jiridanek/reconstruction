@@ -18,6 +18,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <omp.h>
+
 #include <i3d/image3d.h>
 #include <i3d/vector3d.h>
 #include <i3d/neighbours.h>
@@ -65,6 +67,7 @@ template <class T> void Reconstruction_by_dillatation(
 #endif
 
     while(! q.empty()) {
+#ifdef SEQUENTIAL
         const struct IPriorityQueue<size_t, T>::data_priority_t datapriority =
                  q.top();
         const size_t index = datapriority.value;
@@ -183,6 +186,98 @@ template <class T> void Reconstruction_by_dillatation(
             }
         }
 #endif
+#endif /* SEQUENTIAL */
+
+        size_t *currPrioritySlice;
+        size_t noValues;
+        T currPriority;
+        q.getPrioritySlice(&currPrioritySlice, &noValues, &currPriority);
+
+        vector<typename IPriorityQueue<size_t, T>::data_priority_t> neighboursToVisit;
+        // lets take all the memory we could possibly need right now
+        neighboursToVisit.reserve(noValues*NEIGHBOURHOOD.offset.size());
+
+        //copied the schedule clause from http://software.intel.com/en-us/articles/optimization-of-image-processing-algorithms-a-case-study/
+        //no idea what does it do
+        //private (colin,colout)
+#pragma omp parallel for schedule(dynamic,3*MASK.GetWidth())
+        for(size_t i=0; i < noValues; i++) {
+            const size_t index = currPrioritySlice[i];
+            // hopefully this won't cause problems, because no to threads
+            // will modify the same voxel
+            reconstructed.SetVoxel(currPrioritySlice[i], currPriority);
+#ifdef NEIGHBOURHOOD_DOITYOURSELF
+
+            const size_t x = reconstructed.GetX(index);
+            const size_t y = reconstructed.GetY(index);
+            const size_t z = reconstructed.GetZ(index);
+
+            for(typename i3d::VectContainer::const_iterator it=NEIGHBOURHOOD.offset.begin(); it!=NEIGHBOURHOOD.offset.end(); ++it) {
+                const i3d::Vector3d<int> neig = *it;
+                size_t newx;
+                size_t newy;
+                size_t newz;
+                if(neig.x < 0) {
+                    if(abs(neig.x) > x) {
+                        continue;
+                    } else {
+                        newx = x+neig.x;
+                    }
+                } else {
+                    /// neig.x >= 0
+                    if(neig.x + x > MASK.GetWidth()-1) {
+                        continue;
+                    } else {
+                        newx = x+neig.x;
+                    }
+                }
+                if(neig.y < 0) {
+                    if(abs(neig.y) > y) {
+                        continue;
+                    } else {
+                        newy = y+neig.y;
+                    }
+                } else {
+                    /// neig.y >= 0
+                    if(neig.y + y > MASK.GetHeight()-1) {
+                        continue;
+                    } else {
+                        newy = y+neig.y;
+                    }
+                }
+                if(neig.z < 0) {
+                    if(abs(neig.z) > z) {
+                        continue;
+                    } else {
+                        newz = z+neig.z;
+                    }
+                } else {
+                    /// neig.z >= 0
+                    if(neig.z + z > MASK.GetSizeZ()-1) {
+                        continue;
+                    } else {
+                        newz = z+neig.z;
+                    }
+                }
+
+                size_t position = index+neig.x + neig.y*MASK.GetWidth() + neig.z*MASK.GetHeight()*MASK.GetWidth();
+                //size_t position = MASK.GetIndex(newx, newy, newz);
+                /// checking q.getPriority(position) != neigh_intensity here only slows it down
+                // const method, no race conditions on q
+                if(!q.hasBeenDequeued(position)) {
+    #pragma omp critical
+                    {
+                        neighboursToVisit.push_back((typename IPriorityQueue<size_t, T>::data_priority_t) {position, max(currPriority, mask_data[position])});
+                    }
+                }
+            }
+#endif /* NEIGHBOURHOOD_DOITYOURSELF */
+
+        }
+        for(typename vector< typename IPriorityQueue<size_t, T>::data_priority_t >::const_iterator it = neighboursToVisit.begin(); it != neighboursToVisit.end(); ++it) {
+            q.push((*it).value, (*it).priority);
+        }
+        free(currPrioritySlice);
     }
 }
 
